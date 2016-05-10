@@ -26,45 +26,68 @@ Arduino Uno (any 'duino should do)
 
 #define BQ72441_I2C_TIMEOUT 2000
 
+typedef enum {
+	AVG,
+	STBY,
+	MAX
+} current_measure;
+
+typedef enum {
+	REMAIN,
+	FULL,
+	AVAIL,
+	AVAIL_FULL,
+	REMAIN_F,
+	REMAIN_UF,
+	FULL_F,
+	FULL_UF,
+	DESIGN
+} capacity_measure;
+
+typedef enum {
+	FILTERED,
+	UNFILTERED
+} soc_measure;
+
+typedef enum {
+	PERCENT,
+	SOH_STAT
+} soh_measure;
+
+typedef enum {
+	BATTERY,
+	INTERNAL_TEMP
+} temp_measure;
+
 class BQ27441 {
 public:
+	//////////////////////////////
+	// Initialization Functions //
+	//////////////////////////////
 	BQ27441();
 	bool begin(void);
 	bool setCapacity(uint16_t capacity);
 	
-	uint16_t temperature(void);
+	/////////////////////////////
+	// Battery Characteristics //
+	/////////////////////////////
 	uint16_t voltage(void);
-	int16_t current(void);
-	uint16_t capacity(void);
-	
-	uint16_t nominalAvailableCapacity(void);
-	uint16_t fullAvailableCapacity(void);
-	uint16_t remainingCapacity(void);
-	uint16_t fullChargeCapacity(void);
-	
-	int16_t averageCurrent(void);
-	int16_t standbyCurrent(void);
-	int16_t maxLoadCurrent(void);
-	int16_t averagePower(void);
-	
-	uint16_t soc(void);
-	uint16_t soh(void);
-	
-	uint16_t internalTemperature(void);
-	
-	uint16_t remainingCapacityUnfilitered(void);
-	uint16_t remainingCapacityFiltered(void);
-	uint16_t fullChargeCapacityUnfiltered(void);
-	uint16_t fullChargeCapacityFiltered(void);
-	uint16_t socUnfiltered(void);
-	
-	uint16_t flags(void);
-	
+	int16_t current(current_measure type = AVG);
+	uint16_t capacity(capacity_measure type = REMAIN);
+	int16_t power(void);
+	uint16_t soc(soc_measure type = FILTERED);
+	uint8_t soh(soh_measure type = PERCENT);
+	uint16_t temperature(temp_measure type = BATTERY);
+		
 	//////////////////////////
 	// Control Sub-commands //
 	//////////////////////////
+	uint16_t flags(void);
 	uint16_t status(void);
 	uint16_t deviceType(void);
+	
+private:
+	uint8_t _deviceAddress;
 	
 	bool sealed(void);
 	bool seal(void);
@@ -72,10 +95,13 @@ public:
 	
 	bool enterConfig(void);
 	bool exitConfig(bool resim = true);
+	uint16_t readOpConfig(void);
+	
 	bool softReset(void);
 	
-	uint16_t readOpConfig(void);
-	uint16_t readDesignCapacity(void);
+	uint16_t readWord(uint16_t subAddress);
+	uint16_t readControlWord(uint16_t function);
+	bool executeControlWord(uint16_t function);
 	
 	bool blockDataControl(void);
 	bool blockDataClass(uint8_t id);
@@ -86,15 +112,6 @@ public:
 	uint8_t computeBlockChecksum(void);
 	bool writeBlockChecksum(uint8_t csum);
 	bool writeExtendedData(uint8_t classID, uint8_t offset, uint8_t * data, uint8_t len);
-	
-	float convertVoltage(uint16_t rawVoltage);
-	
-//private:
-	uint8_t _deviceAddress;
-	
-	uint16_t readWord(uint16_t subAddress);
-	uint16_t readControlWord(uint16_t function);
-	bool executeControlWord(uint16_t function);
 	
 	int16_t i2cReadBytes(uint8_t subAddress, uint8_t * dest, uint8_t count);
 	uint16_t i2cWriteBytes(uint8_t subAddress, uint8_t * src, uint8_t count);

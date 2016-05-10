@@ -56,12 +56,22 @@ bool BQ27441::setCapacity(uint16_t capacity)
 	uint8_t capacityData[2] = {capMSB, capLSB};
 	writeExtendedData(BQ27441_ID_STATE, 10, capacityData, 2);
 	// Even though we check a flag, this still seems to take settling time:
-	delay(1500);
+	delay(2000);
 }
 
-uint16_t BQ27441::temperature(void)
+uint16_t BQ27441::temperature(temp_measure type)
 {
-	return readWord(BQ27441_COMMAND_TEMP);
+	uint16_t temp = 0;
+	switch (type)
+	{
+	case BATTERY:
+		temp = readWord(BQ27441_COMMAND_TEMP);
+		break;
+	case INTERNAL_TEMP:
+		temp = readWord(BQ27441_COMMAND_INT_TEMP);
+		break;
+	}
+	return temp;
 }
 
 uint16_t BQ27441::voltage(void)
@@ -69,98 +79,92 @@ uint16_t BQ27441::voltage(void)
 	return readWord(BQ27441_COMMAND_VOLTAGE);
 }
 
-//! Give this a parameter, return based on parameter
-//! default to average.
-int16_t BQ27441::current(void)
+int16_t BQ27441::current(current_measure type)
 {
-	return averageCurrent();
+	int16_t current = 0;
+	switch (type)
+	{
+	case AVG:
+		current = (int16_t) readWord(BQ27441_COMMAND_AVG_CURRENT);
+		break;
+	case STBY:
+		current = (int16_t) readWord(BQ27441_COMMAND_STDBY_CURRENT);
+		break;
+	case MAX:
+		current = (int16_t) readWord(BQ27441_COMMAND_MAX_CURRENT);
+		break;
+	}
+	
+	return current;
 }
 
-//! Give this a parameter, return based on parameter
-//! default to remaining.
-uint16_t BQ27441::capacity(void)
+uint16_t BQ27441::capacity(capacity_measure type)
 {
-	return remainingCapacity();
+	uint16_t capacity = 0;
+	switch (type)
+	{
+	case REMAIN:
+		return readWord(BQ27441_COMMAND_REM_CAPACITY);
+		break;
+	case FULL:
+		return readWord(BQ27441_COMMAND_FULL_CAPACITY);
+		break;
+	case AVAIL:
+		capacity = readWord(BQ27441_COMMAND_NOM_CAPACITY);
+		break;
+	case AVAIL_FULL:
+		capacity = readWord(BQ27441_COMMAND_AVAIL_CAPACITY);
+		break;
+	case REMAIN_F: 
+		capacity = readWord(BQ27441_COMMAND_REM_CAP_FIL);
+		break;
+	case REMAIN_UF:
+		capacity = readWord(BQ27441_COMMAND_REM_CAP_UNFL);
+		break;
+	case FULL_F:
+		capacity = readWord(BQ27441_COMMAND_FULL_CAP_FIL);
+		break;
+	case FULL_UF:
+		capacity = readWord(BQ27441_COMMAND_FULL_CAP_UNFL);
+		break;
+	case DESIGN:
+		capacity = readWord(BQ27441_EXTENDED_CAPACITY);
+	}
+	
+	return capacity;
 }
 
-uint16_t BQ27441::nominalAvailableCapacity(void)
-{
-	return readWord(BQ27441_COMMAND_NOM_CAPACITY);
-}
-
-uint16_t BQ27441::fullAvailableCapacity(void)
-{
-	return readWord(BQ27441_COMMAND_AVAIL_CAPACITY);
-}
-
-uint16_t BQ27441::remainingCapacity(void)
-{
-	return readWord(BQ27441_COMMAND_REM_CAPACITY);
-}
-
-uint16_t BQ27441::fullChargeCapacity(void)
-{
-	return readWord(BQ27441_COMMAND_FULL_CAPACITY);
-}
-
-int16_t BQ27441::averageCurrent(void)
-{
-	return (int16_t) readWord(BQ27441_COMMAND_AVG_CURRENT);
-}
-
-int16_t BQ27441::standbyCurrent(void)
-{
-	return (int16_t) readWord(BQ27441_COMMAND_STDBY_CURRENT);
-}
-
-int16_t BQ27441::maxLoadCurrent(void)
-{
-	return (int16_t) readWord(BQ27441_COMMAND_MAX_CURRENT);
-}
-
-int16_t BQ27441::averagePower(void)
+int16_t BQ27441::power(void)
 {
 	return (int16_t) readWord(BQ27441_COMMAND_AVG_POWER);
 }
 
-uint16_t BQ27441::soc(void)
+uint16_t BQ27441::soc(soc_measure type)
 {
-	return readWord(BQ27441_COMMAND_SOC);
+	uint16_t socRet = 0;
+	switch (type)
+	{
+	case FILTERED:
+		socRet = readWord(BQ27441_COMMAND_SOC);
+		break;
+	case UNFILTERED:
+		socRet = readWord(BQ27441_COMMAND_SOC_UNFL);
+		break;
+	}
+	
+	return socRet;
 }
 
-uint16_t BQ27441::soh(void)
+uint8_t BQ27441::soh(soh_measure type)
 {
-	return readWord(BQ27441_COMMAND_SOH);
-}
-
-uint16_t BQ27441::internalTemperature(void)
-{
-	return readWord(BQ27441_COMMAND_INT_TEMP);
-}
-
-uint16_t BQ27441::remainingCapacityUnfilitered(void)
-{
-	return readWord(BQ27441_COMMAND_REM_CAP_UNFL);
-}
-
-uint16_t BQ27441::remainingCapacityFiltered(void)
-{
-	return readWord(BQ27441_COMMAND_REM_CAP_FIL);
-}
-
-uint16_t BQ27441::fullChargeCapacityUnfiltered(void)
-{
-	return readWord(BQ27441_COMMAND_FULL_CAP_UNFL);
-}
-
-uint16_t BQ27441::fullChargeCapacityFiltered(void)
-{
-	return readWord(BQ27441_COMMAND_FULL_CAP_FIL);
-}
-
-uint16_t BQ27441::socUnfiltered(void)
-{
-	return readWord(BQ27441_COMMAND_SOC_UNFL);
+	uint16_t sohRaw = readWord(BQ27441_COMMAND_SOH);
+	uint8_t sohStatus = sohRaw >> 8;
+	uint8_t sohPercent = sohRaw & 0x00FF;
+	
+	if (type == PERCENT)	
+		return sohPercent;
+	else
+		return sohStatus;
 }
 
 uint16_t BQ27441::flags(void)
@@ -177,6 +181,9 @@ uint16_t BQ27441::deviceType(void)
 {
 	return readControlWord(BQ27441_CONTROL_DEVICE_TYPE);
 }
+
+
+/***************************** Private Functions *****************************/
 
 bool BQ27441::sealed(void)
 {
@@ -242,19 +249,14 @@ bool BQ27441::exitConfig(bool resim)
 	}	
 }
 
-bool BQ27441::softReset(void)
-{
-	return executeControlWord(BQ27441_CONTROL_SOFT_RESET);
-}
-
 uint16_t BQ27441::readOpConfig(void)
 {
 	return readWord(BQ27441_EXTENDED_OPCONFIG);
 }
 
-uint16_t BQ27441::readDesignCapacity(void)
+bool BQ27441::softReset(void)
 {
-	return readWord(BQ27441_EXTENDED_CAPACITY);
+	return executeControlWord(BQ27441_CONTROL_SOFT_RESET);
 }
 
 bool BQ27441::blockDataControl(void)
@@ -350,13 +352,6 @@ bool BQ27441::writeBlockChecksum(uint8_t csum)
 {
 	return i2cWriteBytes(BQ27441_EXTENDED_CHECKSUM, &csum, 1);	
 }
-
-float BQ27441::convertVoltage(uint16_t rawVoltage)
-{
-	return ((float)rawVoltage) / 1000.0;
-}
-
-/***************************** Private Functions *****************************/
 
 uint16_t BQ27441::readWord(uint16_t subAddress)
 {
