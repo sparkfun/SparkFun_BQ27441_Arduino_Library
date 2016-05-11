@@ -132,3 +132,14 @@ Arduino Uno (any 'duino should do)
 #define BQ27441_ID_CC_CAL			105
 #define BQ27441_ID_CURRENT			107
 #define BQ27441_ID_CODES			112
+
+/////////////////////////////////////////
+// OpConfig Register - Bit Definitions //
+/////////////////////////////////////////
+#define BQ27441_OPCONFIG_BIE      (1<<13)
+#define BQ27441_OPCONFIG_BI_PU_EN (1<<12)
+#define BQ27441_OPCONFIG_GPIOPOL  (1<<11)
+#define BQ27441_OPCONFIG_SLEEP    (1<<5)
+#define BQ27441_OPCONFIG_RMFCC    (1<<4)
+#define BQ27441_OPCONFIG_BATLOWEN (1<<2)
+#define BQ27441_OPCONFIG_TEMPS    (1<<0)

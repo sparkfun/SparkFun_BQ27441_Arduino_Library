@@ -26,7 +26,7 @@ Arduino Uno (any 'duino should do)
 
 /****************************** Public Functions *****************************/
 
-BQ27441::BQ27441() : _deviceAddress(BQ72441_I2C_ADDRESS)
+BQ27441::BQ27441() : _deviceAddress(BQ72441_I2C_ADDRESS), _sealFlag(false), _userConfigControl(false)
 {
 }
 
@@ -55,8 +55,6 @@ bool BQ27441::setCapacity(uint16_t capacity)
 	uint8_t capLSB = capacity & 0x00FF;
 	uint8_t capacityData[2] = {capMSB, capLSB};
 	writeExtendedData(BQ27441_ID_STATE, 10, capacityData, 2);
-	// Even though we check a flag, this still seems to take settling time:
-	delay(2000);
 }
 
 uint16_t BQ27441::temperature(temp_measure type)
@@ -167,14 +165,104 @@ uint8_t BQ27441::soh(soh_measure type)
 		return sohStatus;
 }
 
-uint16_t BQ27441::flags(void)
+
+bool BQ27441::GPOUTPolarity(void)
 {
-	return readWord(BQ27441_COMMAND_FLAGS);
+	uint16_t opConfigRegister = opConfig();
+	
+	return (opConfigRegister & BQ27441_OPCONFIG_GPIOPOL);
 }
 
-uint16_t BQ27441::status(void)
+bool BQ27441::setGPOUTPolarity(bool activeHigh)
 {
-	return readControlWord(BQ27441_CONTROL_STATUS);
+	uint16_t oldOpConfig = opConfig();
+	
+	// Check to see if we need to update opConfig:
+	if ((activeHigh && (oldOpConfig & BQ27441_OPCONFIG_GPIOPOL)) ||
+        (!activeHigh && !(oldOpConfig & BQ27441_OPCONFIG_GPIOPOL)))
+		return true;
+		
+	uint16_t newOpConfig = oldOpConfig;
+	if (activeHigh)
+		newOpConfig |= BQ27441_OPCONFIG_GPIOPOL;
+	else
+		newOpConfig &= ~(BQ27441_OPCONFIG_GPIOPOL);
+	
+	return writeOpConfig(newOpConfig);	
+}
+
+bool BQ27441::GPOUTFunction(void)
+{
+	uint16_t opConfigRegister = opConfig();
+	
+	return (opConfigRegister & BQ27441_OPCONFIG_BATLOWEN);	
+}
+
+bool BQ27441::setGPOUTFunction(gpout_function function)
+{
+	uint16_t oldOpConfig = opConfig();
+	
+	// Check to see if we need to update opConfig:
+	if ((function && (oldOpConfig & BQ27441_OPCONFIG_BATLOWEN)) ||
+        (!function && !(oldOpConfig & BQ27441_OPCONFIG_BATLOWEN)))
+		return true;
+	
+	// Modify BATLOWN_EN bit of opConfig:
+	uint16_t newOpConfig = oldOpConfig;
+	if (function)
+		newOpConfig |= BQ27441_OPCONFIG_BATLOWEN;
+	else
+		newOpConfig &= ~(BQ27441_OPCONFIG_BATLOWEN);
+
+	// Write new opConfig
+	return writeOpConfig(newOpConfig);	
+}
+
+uint8_t BQ27441::SOC1SetThreshold(void)
+{
+	return readExtendedData(BQ27441_ID_DISCHARGE, 0);
+}
+
+uint8_t BQ27441::SOC1ClearThreshold(void)
+{
+	return readExtendedData(BQ27441_ID_DISCHARGE, 1);	
+}
+
+bool BQ27441::setSOC1Thresholds(uint8_t set, uint8_t clear)
+{
+	uint8_t thresholds[2];
+	thresholds[0] = constrain(set, 0, 100);
+	thresholds[1] = constrain(clear, 0, 100);
+	return writeExtendedData(BQ27441_ID_DISCHARGE, 0, thresholds, 2);
+}
+
+uint8_t BQ27441::SOCFSetThreshold(void)
+{
+	return readExtendedData(BQ27441_ID_DISCHARGE, 2);
+}
+
+uint8_t BQ27441::SOCFClearThreshold(void)
+{
+	return readExtendedData(BQ27441_ID_DISCHARGE, 3);	
+}
+
+bool BQ27441::setSOCFThresholds(uint8_t set, uint8_t clear)
+{
+	uint8_t thresholds[2];
+	thresholds[0] = constrain(set, 0, 100);
+	thresholds[1] = constrain(clear, 0, 100);
+	return writeExtendedData(BQ27441_ID_DISCHARGE, 2, thresholds, 2);
+}
+
+uint8_t BQ27441::sociDelta(void)
+{
+	return readExtendedData(BQ27441_ID_STATE, 26);
+}
+
+bool BQ27441::setSOCIDelta(uint8_t delta)
+{
+	uint8_t soci = constrain(delta, 0, 100);
+	return writeExtendedData(BQ27441_ID_STATE, 26, &soci, 1);
 }
 
 uint16_t BQ27441::deviceType(void)
@@ -182,6 +270,10 @@ uint16_t BQ27441::deviceType(void)
 	return readControlWord(BQ27441_CONTROL_DEVICE_TYPE);
 }
 
+bool BQ27441::pulseGPOUT(void)
+{
+	return executeControlWord(BQ27441_CONTROL_PULSE_SOC_INT);
+}
 
 /***************************** Private Functions *****************************/
 
@@ -207,8 +299,16 @@ bool BQ27441::unseal(void)
 	return false;
 }
 
-bool BQ27441::enterConfig(void)
+bool BQ27441::enterConfig(bool userControl)
 {
+	if (userControl) _userConfigControl = true;
+	
+	if (sealed())
+	{
+		_sealFlag = true;
+		unseal(); // Must be unsealed before making changes
+	}
+	
 	if (executeControlWord(BQ27441_CONTROL_SET_CFGUPDATE))
 	{
 		int16_t timeout = BQ72441_I2C_TIMEOUT;
@@ -239,7 +339,10 @@ bool BQ27441::exitConfig(bool resim)
 			while ((timeout--) && ((flags() & BQ27441_FLAG_CFGUPMODE)))
 				delay(1);
 			if (timeout > 0)
+			{
+				if (_sealFlag) seal(); // Seal back up if we IC was sealed coming in
 				return true;
+			}
 		}
 		return false;
 	}
@@ -249,9 +352,29 @@ bool BQ27441::exitConfig(bool resim)
 	}	
 }
 
-uint16_t BQ27441::readOpConfig(void)
+uint16_t BQ27441::flags(void)
+{
+	return readWord(BQ27441_COMMAND_FLAGS);
+}
+
+uint16_t BQ27441::status(void)
+{
+	return readControlWord(BQ27441_CONTROL_STATUS);
+}
+
+uint16_t BQ27441::opConfig(void)
 {
 	return readWord(BQ27441_EXTENDED_OPCONFIG);
+}
+
+bool BQ27441::writeOpConfig(uint16_t value)
+{
+	uint8_t opConfigMSB = value >> 8;
+	uint8_t opConfigLSB = value & 0x00FF;
+	uint8_t opConfigData[2] = {opConfigMSB, opConfigLSB};
+	
+	// OpConfig register location: BQ27441_ID_REGISTERS id, offset 0
+	return writeExtendedData(BQ27441_ID_REGISTERS, 0, opConfigData, 2);	
 }
 
 bool BQ27441::softReset(void)
@@ -284,20 +407,38 @@ uint8_t BQ27441::blockDataChecksum(void)
 	return csum;
 }
 
+uint8_t BQ27441::readExtendedData(uint8_t classID, uint8_t offset)
+{
+	uint8_t retData = 0;
+	if (!_userConfigControl) enterConfig(false);
+		
+	if (!blockDataControl()) // // enable block data memory control
+		return false; // Return false if enable fails
+	if (!blockDataClass(classID)) // Write class ID using DataBlockClass()
+		return false;
+	
+	blockDataOffset(offset / 32); // Write 32-bit block offset (usually 0)
+	
+	computeBlockChecksum(); // Compute checksum going in
+	uint8_t oldCsum = blockDataChecksum();
+	/*for (int i=0; i<32; i++)
+		Serial.print(String(readBlockData(i)) + " ");*/
+	retData = readBlockData(offset % 32); // Read from offset (limit to 0-31)
+	
+	if (!_userConfigControl) exitConfig();
+	
+	return retData;
+}
+
 bool BQ27441::writeExtendedData(uint8_t classID, uint8_t offset, uint8_t * data, uint8_t len)
 {
 	//! Add catch to make sure len isn't > 32
 	//! Add catch to make sure classID is valid (should be an enum)
-	bool sealFlag = sealed();
-	if (sealFlag) unseal(); // Must be unsealed before making changes
-
-	if (!enterConfig()) // Enter config mode, and wait for CFGUPDATE flag to set
-		return false; // If enter config mode time's out, return fail
-
+	if (!_userConfigControl) enterConfig(false);
+	
 	if (!blockDataControl()) // // enable block data memory control
 		return false; // Return false if enable fails
-	
-	if (!blockDataClass(BQ27441_ID_STATE)) // Write class ID using DataBlockClass()
+	if (!blockDataClass(classID)) // Write class ID using DataBlockClass()
 		return false;
 	
 	blockDataOffset(offset / 32); // Write 32-bit block offset (usually 0)
@@ -316,8 +457,9 @@ bool BQ27441::writeExtendedData(uint8_t classID, uint8_t offset, uint8_t * data,
 	uint8_t newCsum = computeBlockChecksum(); // Compute the new checksum
 	writeBlockChecksum(newCsum);
 
-	exitConfig(); // Exit config mode by sending a soft_reset
-	if (sealFlag) seal(); // Seal back up if we IC was sealed coming in
+	if (!_userConfigControl) exitConfig();
+	
+	return true;
 }
 
 uint8_t BQ27441::readBlockData(uint8_t offset)
@@ -345,6 +487,7 @@ uint8_t BQ27441::computeBlockChecksum(void)
 		csum += data[i];
 	}
 	csum = 255 - csum;
+	
 	return csum;
 }
 

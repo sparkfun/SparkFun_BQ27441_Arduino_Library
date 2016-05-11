@@ -59,6 +59,11 @@ typedef enum {
 	INTERNAL_TEMP
 } temp_measure;
 
+typedef enum {
+	SOC_INT,
+	BAT_LOW
+} gpout_function;
+
 class BQ27441 {
 public:
 	//////////////////////////////
@@ -78,27 +83,48 @@ public:
 	uint16_t soc(soc_measure type = FILTERED);
 	uint8_t soh(soh_measure type = PERCENT);
 	uint16_t temperature(temp_measure type = BATTERY);
-		
+	
+	////////////////////////////	
+	// GPOUT Control Commands //
+	////////////////////////////
+	bool GPOUTPolarity(void);
+	bool setGPOUTPolarity(bool activeHigh);
+	bool GPOUTFunction(void);
+	bool setGPOUTFunction(gpout_function function);
+	uint8_t SOC1SetThreshold(void);
+	uint8_t SOC1ClearThreshold(void);
+	bool setSOC1Thresholds(uint8_t set, uint8_t clear);
+	uint8_t SOCFSetThreshold(void);
+	uint8_t SOCFClearThreshold(void);
+	bool setSOCFThresholds(uint8_t set, uint8_t clear);
+	uint8_t sociDelta(void);
+	bool setSOCIDelta(uint8_t delta);
+	bool pulseGPOUT(void);
+	
 	//////////////////////////
 	// Control Sub-commands //
 	//////////////////////////
+	uint16_t deviceType(void);
+	
+	bool enterConfig(bool userControl = true);
+	bool exitConfig(bool resim = true);
 	uint16_t flags(void);
 	uint16_t status(void);
-	uint16_t deviceType(void);
 	
 private:
 	uint8_t _deviceAddress;
+	bool _sealFlag;
+	bool _userConfigControl;
 	
 	bool sealed(void);
 	bool seal(void);
 	bool unseal(void);
-	
-	bool enterConfig(void);
-	bool exitConfig(bool resim = true);
-	uint16_t readOpConfig(void);
+		
+	uint16_t opConfig(void);
+	bool writeOpConfig(uint16_t value);
 	
 	bool softReset(void);
-	
+		
 	uint16_t readWord(uint16_t subAddress);
 	uint16_t readControlWord(uint16_t function);
 	bool executeControlWord(uint16_t function);
@@ -111,6 +137,8 @@ private:
 	bool writeBlockData(uint8_t offset, uint8_t data);
 	uint8_t computeBlockChecksum(void);
 	bool writeBlockChecksum(uint8_t csum);
+	
+	uint8_t readExtendedData(uint8_t classID, uint8_t offset);
 	bool writeExtendedData(uint8_t classID, uint8_t offset, uint8_t * data, uint8_t len);
 	
 	int16_t i2cReadBytes(uint8_t subAddress, uint8_t * dest, uint8_t count);
