@@ -340,7 +340,7 @@ bool BQ27441::enterConfig(bool userControl)
 	if (executeControlWord(BQ27441_CONTROL_SET_CFGUPDATE))
 	{
 		int16_t timeout = BQ72441_I2C_TIMEOUT;
-		while ((timeout--) && (!(status() & BQ27441_FLAG_CFGUPMODE)))
+		while ((timeout--) && (!(flags() & BQ27441_FLAG_CFGUPMODE)))
 			delay(1);
 		
 		if (timeout > 0)
