@@ -625,14 +625,10 @@ int16_t BQ27441::i2cReadBytes(uint8_t subAddress, uint8_t * dest, uint8_t count)
 	Wire.endTransmission(true);
 	
 	Wire.requestFrom(_deviceAddress, count);
-	while ((Wire.available() < count) && timeout--)
-		delay(1);
-	if (timeout)
+	
+	for (int i=0; i<count; i++)
 	{
-		for (int i=0; i<count; i++)
-		{
-			dest[i] = Wire.read();
-		}
+		dest[i] = Wire.read();
 	}
 	
 	return timeout;
