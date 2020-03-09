@@ -96,6 +96,24 @@ public:
 	*/
 	bool setCapacity(uint16_t capacity);
 	
+	/**
+	    Configures the design energy of the connected battery.
+		
+		@param energy of battery (unsigned 16-bit value)
+		@return true if energy successfully set.
+	*/
+	bool setDesignEnergy(uint16_t energy);
+
+	/**
+	    Configures terminate voltage (lowest operational voltage of battery powered circuit)
+		
+		@param voltage of battery (unsigned 16-bit value)
+		@return true if energy successfully set.
+	*/
+	bool setTerminateVoltage(uint16_t voltage);
+
+	bool setTaperRate(uint16_t rate);
+
 	/////////////////////////////
 	// Battery Characteristics //
 	/////////////////////////////
@@ -244,6 +262,35 @@ public:
 	*/
 	bool socfFlag(void);
 	
+	/**
+	    Check if the ITPOR flag is set in flags()
+		
+		@return true if flag is set
+	*/
+	bool itporFlag(void);
+
+	/**
+	    Check if the FC flag is set in flags()
+		
+		@return true if flag is set
+	*/
+	bool fcFlag(void);
+
+	/**
+	    Check if the CHG flag is set in flags()
+		
+		@return true if flag is set
+	*/
+	bool chgFlag(void);
+
+	/**
+	    Check if the DSG flag is set in flags()
+		
+		@return true if flag is set
+	*/
+	bool dsgFlag(void);
+
+
 	/**
 	    Get the SOC_INT interval delta
 		

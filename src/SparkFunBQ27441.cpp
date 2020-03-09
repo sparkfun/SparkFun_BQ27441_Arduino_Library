@@ -53,10 +53,56 @@ bool BQ27441::setCapacity(uint16_t capacity)
 	// Write to STATE subclass (82) of BQ27441 extended memory.
 	// Offset 0x0A (10)
 	// Design capacity is a 2-byte piece of data - MSB first
+	// Unit: mAh
 	uint8_t capMSB = capacity >> 8;
 	uint8_t capLSB = capacity & 0x00FF;
 	uint8_t capacityData[2] = {capMSB, capLSB};
 	return writeExtendedData(BQ27441_ID_STATE, 10, capacityData, 2);
+}
+
+// Configures the design energy of the connected battery.
+bool BQ27441::setDesignEnergy(uint16_t energy)
+{
+	// Write to STATE subclass (82) of BQ27441 extended memory.
+	// Offset 0x0C (12)
+	// Design energy is a 2-byte piece of data - MSB first
+	// Unit: mWh
+	uint8_t enMSB = energy >> 8;
+	uint8_t enLSB = energy & 0x00FF;
+	uint8_t energyData[2] = {enMSB, enLSB};
+	return writeExtendedData(BQ27441_ID_STATE, 12, energyData, 2);
+}
+
+// Configures the terminate voltage.
+bool BQ27441::setTerminateVoltage(uint16_t voltage)
+{
+	// Write to STATE subclass (82) of BQ27441 extended memory.
+	// Offset 0x0F (16)
+	// Termiante voltage is a 2-byte piece of data - MSB first
+	// Unit: mV
+	// Min 2500, Max 3700
+	if(voltage<2500) voltage=2500;
+	if(voltage>3700) voltage=3700;
+	
+	uint8_t tvMSB = voltage >> 8;
+	uint8_t tvLSB = voltage & 0x00FF;
+	uint8_t tvData[2] = {tvMSB, tvLSB};
+	return writeExtendedData(BQ27441_ID_STATE, 16, tvData, 2);
+}
+
+// Configures taper rate of connected battery.
+bool BQ27441::setTaperRate(uint16_t rate)
+{
+	// Write to STATE subclass (82) of BQ27441 extended memory.
+	// Offset 0x1B (27)
+	// Termiante voltage is a 2-byte piece of data - MSB first
+	// Unit: 0.1h
+	// Max 2000
+	if(rate>2000) rate=2000;
+	uint8_t trMSB = rate >> 8;
+	uint8_t trLSB = rate & 0x00FF;
+	uint8_t trData[2] = {trMSB, trLSB};
+	return writeExtendedData(BQ27441_ID_STATE, 27, trData, 2);
 }
 
 /*****************************************************************************
@@ -294,6 +340,38 @@ bool BQ27441::socfFlag(void)
 	
 	return flagState & BQ27441_FLAG_SOCF;
 	
+}
+
+// Check if the ITPOR flag is set
+bool BQ27441::itporFlag(void)
+{
+	uint16_t flagState = flags();
+	
+	return flagState & BQ27441_FLAG_ITPOR;
+}
+
+// Check if the FC flag is set
+bool BQ27441::fcFlag(void)
+{
+	uint16_t flagState = flags();
+	
+	return flagState & BQ27441_FLAG_FC;
+}
+
+// Check if the CHG flag is set
+bool BQ27441::chgFlag(void)
+{
+	uint16_t flagState = flags();
+	
+	return flagState & BQ27441_FLAG_CHG;
+}
+
+// Check if the DSG flag is set
+bool BQ27441::dsgFlag(void)
+{
+	uint16_t flagState = flags();
+	
+	return flagState & BQ27441_FLAG_DSG;
 }
 
 // Get the SOC_INT interval delta
