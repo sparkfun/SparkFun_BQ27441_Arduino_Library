@@ -5,9 +5,13 @@ SparkFun BQ27441-G1A LiPo Fuel Gauge Arduino Library
 
 [*SparkFun Battery Babysitter (featuring the BQ27441-G1A LiPo Fuel Gauge) (PRT-13777)*](https://www.sparkfun.com/products/13777)
 
-Texas Instrument's [BQ27441-G1A](http://www.ti.com/product/BQ27441-G1) is a self-calibrating, I2C-based fuel gauge for lithium polymer (LiPo) batteries -- it measures your battery’s voltage to estimate its charge percentage and remaining capacity. The chip is also hooked up to a current-sensing resistor, which allows it to measure current and power! The fuel gauge makes up half of the [SparkFun Battery Babysitter](https://www.sparkfun.com/products/13777).
+Texas Instrument's [BQ27441-G1A](http://www.ti.com/product/BQ27441-G1) is a self-calibrating, I2C-based fuel gauge for lithium polymer (LiPo) batteries -- it measures your battery's voltage to estimate its charge percentage and remaining capacity. The chip is also hooked up to a current-sensing resistor, which allows it to measure current and power! The fuel gauge makes up half of the [SparkFun Battery Babysitter](https://www.sparkfun.com/products/13777).
 
 This Arduino library abstracts away all of the low-level I2C communication, so you can easily initialize the fuel gauge then read voltage, state-of-charge, current, power, and capacity. It also implements all of the chip's low-battery, and SoC-change alerts on the GPOUT pin.
+
+Thanks to:
+
+* [keton](https://github.com/keton) for adding extended config methods and an example showing how to use them
 
 Repository Contents
 -------------------
