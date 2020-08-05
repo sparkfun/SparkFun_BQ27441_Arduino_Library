@@ -167,7 +167,7 @@ public:
 	    Reads and returns specified temperature measurement
 		
 		@param temp_measure enum specifying internal or battery measurement
-		@return specified temperature measurement in degrees C
+		@return specified temperature measurement in 0.1K
 	*/
 	uint16_t temperature(temp_measure type = BATTERY);
 	
